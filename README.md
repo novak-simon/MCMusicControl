@@ -29,11 +29,14 @@ start playing. The current example mappings include sustained W/S/A/D
 movement and a trigger-mode Space jump. **Deactivate** and **EMERGENCY STOP**
 release every held key. Sustained mappings use a short configurable release
 delay, and multiple notes mapped to the same physical key are reference
-counted. The controller also releases keys when the foreground window is not
+counted. Sustained mouse buttons use the same release-delay safety mechanism.
+The controller also releases keys when the foreground window is not
 Minecraft and is independently tested with a mock keyboard.
 
 Special mappings use names such as `space`, `escape`, `enter`, `tab`, `shift`,
-`ctrl`, and `alt`; ordinary single-character keys use their character.
+`ctrl`, and `alt`; mouse buttons use `mouse_left`, `mouse_right`, or
+`mouse_middle`; ordinary single-character keys use their character. Mouse
+buttons are sent through `pynput.mouse`, not as keyboard arrow keys.
 
 Stage 4 stores the editable mappings in [`config.json`](./config.json).
 The application validates this file when controls are activated and reports

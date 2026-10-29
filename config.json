@@ -2,8 +2,8 @@
   "release_delay_seconds": 0.08,
   "trigger_hold_seconds": 0.06,
   "mappings": {
-    "B3": {"key": "right", "mode": "trigger", "enabled": true},
-    "C4": {"key": "left", "mode": "sustained", "enabled": true},
+    "B3": {"key": "mouse_right", "mode": "trigger", "enabled": true},
+    "C4": {"key": "mouse_left", "mode": "sustained", "enabled": true},
     "D4": {"key": "space", "mode": "sustained", "enabled": true},
     "E4": {"key": "d", "mode": "sustained", "enabled": true},
     "F4": {"key": "a", "mode": "sustained", "enabled": true},

@@ -29,20 +29,41 @@ class KeySink(Protocol):
 
 
 class PynputKeySink:
-    """Production keyboard sink; importing pynput is deferred until use."""
+    """Production keyboard/mouse sink; imports are deferred until use."""
 
     def __init__(self) -> None:
         try:
             from pynput.keyboard import Controller
+            from pynput.mouse import Controller as MouseController
         except ImportError as error:
             raise RuntimeError("pynput is not installed") from error
         self._controller = Controller()
+        self._mouse_controller = MouseController()
 
     def press(self, key: str) -> None:
-        self._controller.press(self._resolve_key(key))
+        mouse_button = self._resolve_mouse_button(key)
+        if mouse_button is not None:
+            self._mouse_controller.press(mouse_button)
+        else:
+            self._controller.press(self._resolve_key(key))
 
     def release(self, key: str) -> None:
-        self._controller.release(self._resolve_key(key))
+        mouse_button = self._resolve_mouse_button(key)
+        if mouse_button is not None:
+            self._mouse_controller.release(mouse_button)
+        else:
+            self._controller.release(self._resolve_key(key))
+
+    @staticmethod
+    def _resolve_mouse_button(key: str):
+        from pynput.mouse import Button
+
+        aliases = {
+            "mouse_left": Button.left,
+            "mouse_right": Button.right,
+            "mouse_middle": Button.middle,
+        }
+        return aliases.get(key.lower())
 
     @staticmethod
     def _resolve_key(key: str):

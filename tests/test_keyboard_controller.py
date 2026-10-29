@@ -142,7 +142,10 @@ def test_focus_loss_and_emergency_stop_release_everything() -> None:
 
 def test_pynput_resolves_space_and_escape_names() -> None:
     from pynput.keyboard import Key
+    from pynput.mouse import Button
 
     assert PynputKeySink._resolve_key("space") is Key.space
     assert PynputKeySink._resolve_key("escape") is Key.esc
     assert PynputKeySink._resolve_key("w") == "w"
+    assert PynputKeySink._resolve_mouse_button("mouse_left") is Button.left
+    assert PynputKeySink._resolve_mouse_button("mouse_right") is Button.right
