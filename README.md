@@ -1,5 +1,11 @@
 # Saxophone-Controlled Minecraft
 
+**####################################################################################**
+**Curently in development. Current version supports all keyboard keys and mouse buttons, however replacements for mouse movement and inventory actions are yet to be implemented. If you want to try it, use it with something like the OnlyKeys mod (https://modrinth.com/mod/onlykeys, developed by jaszlo and TNikoT, I hope they don't mind if I recommend their mod here), or similar alternative.**
+**####################################################################################**
+
+
+
 ## Stage 1-4: pitch detection, note-state tracking, keyboard control, and mappings
 
 Stage 1 provides a Tkinter window that captures mono microphone audio in a
