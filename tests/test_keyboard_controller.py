@@ -63,7 +63,28 @@ def test_trigger_note_presses_once() -> None:
     control.activate()
     control.process(event("note_on"))
     control.process(event("continue"))
+    assert mock.events == [("press", "space")]
+    clock[0] = 0.06
+    control.tick()
     assert mock.events == [("press", "space"), ("release", "space")]
+
+
+def test_trigger_hold_can_be_configured() -> None:
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("e", ControlMode.TRIGGER)},
+        trigger_hold_seconds=0.2,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    clock[0] = 0.1
+    control.tick()
+    assert mock.events == [("press", "e")]
+    clock[0] = 0.2
+    control.tick()
+    assert mock.events == [("press", "e"), ("release", "e")]
 
 
 def test_shared_key_releases_only_after_both_notes_end() -> None:

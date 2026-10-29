@@ -85,14 +85,18 @@ class KeyboardController:
         sink: KeySink,
         mappings: dict[tuple[str, int], NoteMapping] | None = None,
         release_delay_seconds: float = 0.08,
+        trigger_hold_seconds: float = 0.06,
         clock: Callable[[], float] = time.monotonic,
         focus_checker: Callable[[], bool] | None = None,
     ) -> None:
         if release_delay_seconds < 0:
             raise ValueError("release_delay_seconds must not be negative")
+        if trigger_hold_seconds <= 0:
+            raise ValueError("trigger_hold_seconds must be positive")
         self.sink = sink
         self.mappings = mappings or {}
         self.release_delay_seconds = release_delay_seconds
+        self.trigger_hold_seconds = trigger_hold_seconds
         self._clock = clock
         self._focus_checker = focus_checker
         self.active = False
@@ -100,6 +104,7 @@ class KeyboardController:
         self._held_by_note: dict[tuple[str, int], str] = {}
         self._held_keys: dict[str, int] = {}
         self._pending_release_at: dict[tuple[str, int], float] = {}
+        self._pending_trigger_release_at: dict[str, float] = {}
         self.last_action: str | None = None
 
     @property
@@ -144,13 +149,19 @@ class KeyboardController:
             if now >= deadline:
                 self._pending_release_at.pop(note, None)
                 self._release_note_immediately(note)
+        for key, deadline in list(self._pending_trigger_release_at.items()):
+            if now >= deadline:
+                self._pending_trigger_release_at.pop(key, None)
+                self.sink.release(key)
 
     def release_all(self) -> None:
-        for key in list(self._held_keys):
+        keys_to_release = set(self._held_keys) | set(self._pending_trigger_release_at)
+        for key in keys_to_release:
             self.sink.release(key)
         self._held_by_note.clear()
         self._held_keys.clear()
         self._pending_release_at.clear()
+        self._pending_trigger_release_at.clear()
 
     def _activate_mapping(self, note: tuple[str, int]) -> None:
         mapping = self.mappings.get(note)
@@ -159,7 +170,9 @@ class KeyboardController:
         self._pending_release_at.pop(note, None)
         if mapping.mode is ControlMode.TRIGGER:
             self.sink.press(mapping.key)
-            self.sink.release(mapping.key)
+            self._pending_trigger_release_at[mapping.key] = (
+                self._clock() + self.trigger_hold_seconds
+            )
             self.last_action = f"{mapping.key} (trigger)"
             return
         if note not in self._held_by_note:

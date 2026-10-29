@@ -1,6 +1,6 @@
 # Saxophone-Controlled Minecraft
 
-## Stage 1-3: pitch detection, note-state tracking, and keyboard control
+## Stage 1-4: pitch detection, note-state tracking, keyboard control, and mappings
 
 Stage 1 provides a Tkinter window that captures mono microphone audio in a
 background thread and estimates the fundamental frequency using aubio's
@@ -35,6 +35,15 @@ Minecraft and is independently tested with a mock keyboard.
 Special mappings use names such as `space`, `escape`, `enter`, `tab`, `shift`,
 `ctrl`, and `alt`; ordinary single-character keys use their character.
 
+Stage 4 stores the editable mappings in [`config.json`](./config.json).
+The application validates this file when controls are activated and reports
+invalid JSON, notes, modes, keys, or timing values before sending input.
+Trigger mappings hold their key for `trigger_hold_seconds` (60 ms by default)
+and release it from the controller timer, giving Minecraft time to observe
+actions such as jump, inventory, hotbar selection, and Escape. Sustained
+movement and jump defaults are intentionally conservative; the disabled C4
+entry reserves the future attack mapping without sending mouse input yet.
+
 ## Installation
 
 Use Python 3.13 on Windows:
@@ -62,6 +71,11 @@ python app.py
 Select an input microphone, adjust the expected pitch range if needed, and
 press **Start**. The UI remains on the main Tkinter thread; capture and pitch
 calculation run in a worker thread.
+
+Edit `config.json` while the application is stopped, then activate controls
+again to load the changes. A mapping has a note key such as `A4`, a keyboard
+key, a mode (`sustained` or `trigger`), and an `enabled` flag. Do not use
+mouse names yet; mouse control is a later stage.
 
 ## Tests
 

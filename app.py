@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import queue
+from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from audio_worker import AudioWorker
+from configuration import load_config
 from focus_guard import minecraft_is_focused
-from keyboard_controller import ControlMode, KeyboardController, NoteMapping, PynputKeySink
+from keyboard_controller import KeyboardController, PynputKeySink
 from note_state import NoteStateTracker
 from pitch_detector import PitchEstimate, create_pitch_detector
 
@@ -104,20 +106,17 @@ class PitchApp:
         if self.controller is not None and self.controller.active:
             return
         try:
+            config = load_config(Path(__file__).with_name("config.json"))
             self.controller = KeyboardController(
                 PynputKeySink(),
-                {
-                    ("A", 4): NoteMapping("w", ControlMode.SUSTAINED),
-                    ("G", 4): NoteMapping("s", ControlMode.SUSTAINED),
-                    ("F", 4): NoteMapping("a", ControlMode.SUSTAINED),
-                    ("E", 4): NoteMapping("d", ControlMode.SUSTAINED),
-                    ("D", 4): NoteMapping("space", ControlMode.SUSTAINED),
-                },
+                config.mappings,
+                release_delay_seconds=config.release_delay_seconds,
+                trigger_hold_seconds=config.trigger_hold_seconds,
                 focus_checker=minecraft_is_focused,
             )
             self.controller.activate()
             self.control_var.set("Keyboard control ACTIVE")
-        except RuntimeError as error:
+        except (RuntimeError, ValueError) as error:
             messagebox.showerror("Keyboard control unavailable", str(error))
 
     def deactivate_controls(self) -> None:
