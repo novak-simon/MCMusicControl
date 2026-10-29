@@ -1,3 +1,4 @@
 sounddevice>=0.5.1
 aubio>=0.4.9
+pynput>=1.7.7
 pytest>=8.0

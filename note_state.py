@@ -47,8 +47,9 @@ class NoteStateTracker:
             self._candidate_frames = 0
             self._invalid_frames += 1
             if self.active_note and self._invalid_frames >= self.release_frames:
+                ended_note = self.active_note
                 self.active_note = None
-                return self._event("note_off", estimate)
+                return NoteEvent("note_off", ended_note[0], ended_note[1], None, estimate.confidence)
             return self._event("uncertain", estimate)
 
         self._invalid_frames = 0

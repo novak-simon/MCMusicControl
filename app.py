@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from audio_worker import AudioWorker
+from focus_guard import minecraft_is_focused
+from keyboard_controller import ControlMode, KeyboardController, NoteMapping, PynputKeySink
 from note_state import NoteStateTracker
 from pitch_detector import PitchEstimate, create_pitch_detector
 
@@ -19,6 +21,7 @@ class PitchApp:
         self.events: queue.Queue[tuple[str, object]] = queue.Queue()
         self.worker: AudioWorker | None = None
         self.tracker = NoteStateTracker()
+        self.controller: KeyboardController | None = None
         self.devices = AudioWorker.list_devices()
         self.device_var = tk.StringVar(value=self.devices[0][1] if self.devices else "No microphone found")
         self.status_var = tk.StringVar(value="Stopped")
@@ -28,6 +31,8 @@ class PitchApp:
         self.min_frequency_var = tk.StringVar(value="100")
         self.max_frequency_var = tk.StringVar(value="1200")
         self.confidence_threshold_var = tk.StringVar(value="0.15")
+        self.control_var = tk.StringVar(value="Keyboard control inactive")
+        self.held_keys_var = tk.StringVar(value="Held keys: none")
         self._build()
         self.root.after(50, self._drain_events)
 
@@ -61,8 +66,19 @@ class PitchApp:
             row=1, column=1, padx=6, pady=(8, 0)
         )
         ttk.Label(frame, textvariable=self.status_var).grid(row=5, column=0, columnspan=3, sticky="w", pady=(12, 0))
-        ttk.Button(frame, text="Start", command=self.start).grid(row=6, column=1, sticky="e", pady=(16, 0))
-        ttk.Button(frame, text="Stop", command=self.stop).grid(row=6, column=2, sticky="w", padx=(8, 0), pady=(16, 0))
+        ttk.Label(frame, textvariable=self.control_var).grid(row=6, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        ttk.Label(frame, textvariable=self.held_keys_var).grid(row=7, column=0, columnspan=3, sticky="w")
+        ttk.Button(frame, text="Start audio", command=self.start).grid(row=8, column=0, sticky="e", pady=(16, 0))
+        ttk.Button(frame, text="Stop audio", command=self.stop).grid(row=8, column=1, sticky="w", padx=(8, 0), pady=(16, 0))
+        ttk.Button(frame, text="Activate controls", command=self.activate_controls).grid(
+            row=9, column=0, sticky="e", pady=(8, 0)
+        )
+        ttk.Button(frame, text="Deactivate", command=self.deactivate_controls).grid(
+            row=9, column=1, sticky="w", padx=(8, 0), pady=(8, 0)
+        )
+        ttk.Button(frame, text="EMERGENCY STOP", command=self.emergency_stop).grid(
+            row=9, column=2, sticky="w", padx=(8, 0), pady=(8, 0)
+        )
 
     def start(self) -> None:
         if self.worker:
@@ -84,10 +100,43 @@ class PitchApp:
         self.worker.start()
         self.status_var.set("Starting microphone...")
 
+    def activate_controls(self) -> None:
+        if self.controller is not None and self.controller.active:
+            return
+        try:
+            self.controller = KeyboardController(
+                PynputKeySink(),
+                {
+                    ("A", 4): NoteMapping("w", ControlMode.SUSTAINED),
+                    ("G", 4): NoteMapping("s", ControlMode.SUSTAINED),
+                    ("F", 4): NoteMapping("a", ControlMode.SUSTAINED),
+                    ("E", 4): NoteMapping("d", ControlMode.SUSTAINED),
+                    ("D", 4): NoteMapping("space", ControlMode.TRIGGER),
+                },
+                focus_checker=minecraft_is_focused,
+            )
+            self.controller.activate()
+            self.control_var.set("Keyboard control ACTIVE")
+        except RuntimeError as error:
+            messagebox.showerror("Keyboard control unavailable", str(error))
+
+    def deactivate_controls(self) -> None:
+        if self.controller:
+            self.controller.deactivate()
+        self.control_var.set("Keyboard control inactive")
+        self.held_keys_var.set("Held keys: none")
+
+    def emergency_stop(self) -> None:
+        if self.controller:
+            self.controller.emergency_stop()
+        self.control_var.set("EMERGENCY STOP - controls inactive")
+        self.held_keys_var.set("Held keys: none")
+
     def stop(self) -> None:
         if self.worker:
             self.worker.stop()
             self.worker = None
+        self.deactivate_controls()
         self.tracker.reset()
         self.status_var.set("Stopped")
         self.note_var.set("--")
@@ -117,6 +166,11 @@ class PitchApp:
                     self.frequency_var.set("-- Hz")
                     self.confidence_var.set(f"{estimate.confidence:.0%} (low)")
                 event = self.tracker.update(estimate)
+                if self.controller:
+                    self.controller.process(event)
+                    self.controller.tick()
+                    held = ", ".join(self.controller.held_keys) or "none"
+                    self.held_keys_var.set(f"Held keys: {held}")
                 self.status_var.set(f"Microphone active - {event.kind}")
         self.root.after(50, self._drain_events)
 

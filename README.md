@@ -1,6 +1,6 @@
 # Saxophone-Controlled Minecraft
 
-## Stage 1 and Stage 2: live pitch detector and note-state tracking
+## Stage 1-3: pitch detection, note-state tracking, and keyboard control
 
 Stage 1 provides a Tkinter window that captures mono microphone audio in a
 background thread and estimates the fundamental frequency using aubio's
@@ -21,7 +21,16 @@ Stage 2 adds `NoteStateTracker`, which turns frame estimates into `note_on`,
 `continue`, `change`, `uncertain`, and `note_off` events. A first valid frame
 starts a note quickly, a pitch change requires two consistent frames, and two
 uncertain frames end a note. These thresholds are deliberately isolated and
-configurable for later keyboard-control tuning.
+configurable for keyboard-control tuning.
+
+Stage 3 adds `KeyboardController`. Keyboard control is never enabled at
+startup: click **Activate controls**, focus the Minecraft window, and then
+start playing. The current example mappings include sustained W/S/A/D
+movement and a trigger-mode Space jump. **Deactivate** and **EMERGENCY STOP**
+release every held key. Sustained mappings use a short configurable release
+delay, and multiple notes mapped to the same physical key are reference
+counted. The controller also releases keys when the foreground window is not
+Minecraft and is independently tested with a mock keyboard.
 
 ## Installation
 
@@ -37,7 +46,9 @@ python -m pip install -r requirements.txt
 used because the installed Windows build reports a zero confidence value for
 `yinfft` even on clean tones. It currently builds successfully on Python
 3.13.5 on Windows. The standard-library fallback does
-not require NumPy. `sounddevice` supplies microphone capture.
+not require NumPy. `sounddevice` supplies microphone capture and `pynput` supplies keyboard
+simulation. The application does not send keyboard input until controls are
+explicitly activated.
 
 ## Run
 

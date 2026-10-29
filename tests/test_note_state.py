@@ -36,7 +36,9 @@ def test_silence_ends_note_after_release_threshold() -> None:
     tracker = NoteStateTracker()
     tracker.update(estimate("A", 4))
     tracker.update(estimate(None, None, False))
-    assert tracker.update(estimate(None, None, False)).kind == "note_off"
+    ended = tracker.update(estimate(None, None, False))
+    assert ended.kind == "note_off"
+    assert (ended.note_name, ended.octave) == ("A", 4)
     assert tracker.active_note is None
 
 
