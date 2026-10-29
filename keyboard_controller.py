@@ -39,10 +39,42 @@ class PynputKeySink:
         self._controller = Controller()
 
     def press(self, key: str) -> None:
-        self._controller.press(key)
+        self._controller.press(self._resolve_key(key))
 
     def release(self, key: str) -> None:
-        self._controller.release(key)
+        self._controller.release(self._resolve_key(key))
+
+    @staticmethod
+    def _resolve_key(key: str):
+        """Resolve config-friendly names such as ``space`` to pynput keys."""
+        if len(key) == 1:
+            return key
+        from pynput.keyboard import Key
+
+        aliases = {
+            "backspace": Key.backspace,
+            "delete": Key.delete,
+            "down": Key.down,
+            "end": Key.end,
+            "enter": Key.enter,
+            "esc": Key.esc,
+            "escape": Key.esc,
+            "home": Key.home,
+            "left": Key.left,
+            "page_down": Key.page_down,
+            "page_up": Key.page_up,
+            "right": Key.right,
+            "space": Key.space,
+            "tab": Key.tab,
+            "up": Key.up,
+            "shift": Key.shift,
+            "ctrl": Key.ctrl,
+            "alt": Key.alt,
+        }
+        try:
+            return aliases[key.lower()]
+        except KeyError as error:
+            raise ValueError(f"Unsupported keyboard key name: {key}") from error
 
 
 class KeyboardController:

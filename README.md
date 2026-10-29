@@ -32,6 +32,9 @@ delay, and multiple notes mapped to the same physical key are reference
 counted. The controller also releases keys when the foreground window is not
 Minecraft and is independently tested with a mock keyboard.
 
+Special mappings use names such as `space`, `escape`, `enter`, `tab`, `shift`,
+`ctrl`, and `alt`; ordinary single-character keys use their character.
+
 ## Installation
 
 Use Python 3.13 on Windows:

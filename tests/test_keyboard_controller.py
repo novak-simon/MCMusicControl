@@ -1,4 +1,4 @@
-from keyboard_controller import ControlMode, KeyboardController, NoteMapping
+from keyboard_controller import ControlMode, KeyboardController, NoteMapping, PynputKeySink
 from note_state import NoteEvent
 
 
@@ -117,3 +117,11 @@ def test_focus_loss_and_emergency_stop_release_everything() -> None:
     control.process(event("note_on"))
     control.emergency_stop()
     assert mock.events == [("press", "w"), ("release", "w"), ("press", "w"), ("release", "w")]
+
+
+def test_pynput_resolves_space_and_escape_names() -> None:
+    from pynput.keyboard import Key
+
+    assert PynputKeySink._resolve_key("space") is Key.space
+    assert PynputKeySink._resolve_key("escape") is Key.esc
+    assert PynputKeySink._resolve_key("w") == "w"

@@ -111,7 +111,7 @@ class PitchApp:
                     ("G", 4): NoteMapping("s", ControlMode.SUSTAINED),
                     ("F", 4): NoteMapping("a", ControlMode.SUSTAINED),
                     ("E", 4): NoteMapping("d", ControlMode.SUSTAINED),
-                    ("D", 4): NoteMapping("space", ControlMode.TRIGGER),
+                    ("D", 4): NoteMapping("space", ControlMode.SUSTAINED),
                 },
                 focus_checker=minecraft_is_focused,
             )
@@ -167,10 +167,16 @@ class PitchApp:
                     self.confidence_var.set(f"{estimate.confidence:.0%} (low)")
                 event = self.tracker.update(estimate)
                 if self.controller:
-                    self.controller.process(event)
-                    self.controller.tick()
-                    held = ", ".join(self.controller.held_keys) or "none"
-                    self.held_keys_var.set(f"Held keys: {held}")
+                    try:
+                        self.controller.process(event)
+                        self.controller.tick()
+                        held = ", ".join(self.controller.held_keys) or "none"
+                        self.held_keys_var.set(f"Held keys: {held}")
+                    except (OSError, RuntimeError, ValueError) as error:
+                        self.controller.emergency_stop()
+                        self.control_var.set("EMERGENCY STOP - keyboard error")
+                        self.status_var.set(f"Keyboard control error: {error}")
+                        continue
                 self.status_var.set(f"Microphone active - {event.kind}")
         self.root.after(50, self._drain_events)
 
