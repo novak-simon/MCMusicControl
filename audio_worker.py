@@ -13,7 +13,7 @@ class AudioWorker:
         self,
         device: int | None,
         detector: AutocorrelationPitchDetector,
-        block_size: int = 2048,
+        block_size: int = 1024,
         on_estimate: Callable[[PitchEstimate], None] | None = None,
         on_status: Callable[[str], None] | None = None,
     ) -> None:
@@ -66,7 +66,11 @@ class AudioWorker:
             if status:
                 self._report_status(str(status))
             samples = [float(frame[0]) for frame in indata]
-            estimate = self.detector.estimate(samples)
+            try:
+                estimate = self.detector.estimate(samples)
+            except Exception as error:
+                self._report_status(f"Pitch detection error: {error}")
+                return
             if self.on_estimate:
                 self.on_estimate(estimate)
 
@@ -93,4 +97,3 @@ class AudioWorker:
     def _report_status(self, message: str) -> None:
         if self.on_status:
             self.on_status(message)
-

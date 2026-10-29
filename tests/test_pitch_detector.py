@@ -1,6 +1,6 @@
 import math
 
-from pitch_detector import AutocorrelationPitchDetector, frequency_to_note
+from pitch_detector import AubioPitchDetector, AutocorrelationPitchDetector, frequency_to_note
 
 
 def tone(frequency: float, sample_rate: int = 44100, count: int = 4096) -> list[float]:
@@ -32,3 +32,11 @@ def test_expected_range_filters_signal() -> None:
     result = AutocorrelationPitchDetector(min_frequency_hz=300, max_frequency_hz=500).estimate(tone(100))
     assert not result.is_valid
 
+
+def test_aubio_detects_sustained_tone_with_confidence() -> None:
+    detector = AubioPitchDetector()
+    results = [detector.estimate(tone(440, count=1024)) for _ in range(4)]
+    result = results[-1]
+    assert result.is_valid
+    assert result.note_name == "A"
+    assert result.confidence > 0.5

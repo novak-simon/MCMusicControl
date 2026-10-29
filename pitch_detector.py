@@ -94,3 +94,63 @@ class AutocorrelationPitchDetector:
             return PitchEstimate(None, None, None, confidence, False)
         return PitchEstimate(frequency, note[0], note[1], confidence, True)
 
+
+class AubioPitchDetector:
+    """Fast pitch estimator backed by aubio's YIN implementation."""
+
+    def __init__(
+        self,
+        sample_rate: int = 44100,
+        buffer_size: int = 2048,
+        hop_size: int = 1024,
+        min_frequency_hz: float = 100.0,
+        max_frequency_hz: float = 1200.0,
+        min_confidence: float = 0.15,
+    ) -> None:
+        try:
+            import aubio
+        except ImportError as error:
+            raise RuntimeError("aubio is not installed") from error
+        if not 0 <= min_confidence <= 1:
+            raise ValueError("min_confidence must be between 0 and 1")
+        self.sample_rate = sample_rate
+        self.min_frequency_hz = min_frequency_hz
+        self.max_frequency_hz = max_frequency_hz
+        self.min_confidence = min_confidence
+        # yin exposes a meaningful confidence score in aubio 0.4.9 on Windows.
+        # yinfft reports zero confidence even for clean, sustained tones.
+        self._pitch = aubio.pitch("yin", buffer_size, hop_size, sample_rate)
+        self._pitch.set_unit("Hz")
+        self._pitch.set_silence(-70)
+        self._vector = aubio.fvec(hop_size)
+
+    def estimate(self, samples: Sequence[float]) -> PitchEstimate:
+        if len(samples) != len(self._vector):
+            return PitchEstimate(None, None, None, 0.0, False)
+        for index, sample in enumerate(samples):
+            self._vector[index] = float(sample)
+        frequency = float(self._pitch(self._vector)[0])
+        confidence = max(0.0, min(1.0, float(self._pitch.get_confidence())))
+        if (
+            frequency < self.min_frequency_hz
+            or frequency > self.max_frequency_hz
+            or confidence < self.min_confidence
+        ):
+            return PitchEstimate(None, None, None, confidence, False)
+        note = frequency_to_note(frequency)
+        if note is None:
+            return PitchEstimate(None, None, None, confidence, False)
+        return PitchEstimate(frequency, note[0], note[1], confidence, True)
+
+
+def create_pitch_detector(**kwargs: float | int) -> AutocorrelationPitchDetector | AubioPitchDetector:
+    """Prefer aubio for real-time use and fall back when it is unavailable."""
+    try:
+        return AubioPitchDetector(**kwargs)
+    except (ImportError, RuntimeError):
+        fallback_kwargs = {
+            key: value
+            for key, value in kwargs.items()
+            if key not in {"buffer_size", "hop_size"}
+        }
+        return AutocorrelationPitchDetector(**fallback_kwargs)

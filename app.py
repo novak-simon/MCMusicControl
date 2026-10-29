@@ -7,7 +7,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from audio_worker import AudioWorker
-from pitch_detector import AutocorrelationPitchDetector, PitchEstimate
+from note_state import NoteStateTracker
+from pitch_detector import PitchEstimate, create_pitch_detector
 
 
 class PitchApp:
@@ -17,6 +18,7 @@ class PitchApp:
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.events: queue.Queue[tuple[str, object]] = queue.Queue()
         self.worker: AudioWorker | None = None
+        self.tracker = NoteStateTracker()
         self.devices = AudioWorker.list_devices()
         self.device_var = tk.StringVar(value=self.devices[0][1] if self.devices else "No microphone found")
         self.status_var = tk.StringVar(value="Stopped")
@@ -25,7 +27,7 @@ class PitchApp:
         self.confidence_var = tk.StringVar(value="--")
         self.min_frequency_var = tk.StringVar(value="100")
         self.max_frequency_var = tk.StringVar(value="1200")
-        self.confidence_threshold_var = tk.StringVar(value="0.35")
+        self.confidence_threshold_var = tk.StringVar(value="0.15")
         self._build()
         self.root.after(50, self._drain_events)
 
@@ -66,10 +68,12 @@ class PitchApp:
         if self.worker:
             return
         try:
-            detector = AutocorrelationPitchDetector(
+            detector = create_pitch_detector(
                 min_frequency_hz=float(self.min_frequency_var.get()),
                 max_frequency_hz=float(self.max_frequency_var.get()),
                 min_confidence=float(self.confidence_threshold_var.get()),
+                buffer_size=2048,
+                hop_size=1024,
             )
         except ValueError as error:
             messagebox.showerror("Invalid pitch range", str(error))
@@ -84,6 +88,7 @@ class PitchApp:
         if self.worker:
             self.worker.stop()
             self.worker = None
+        self.tracker.reset()
         self.status_var.set("Stopped")
         self.note_var.set("--")
         self.frequency_var.set("-- Hz")
@@ -111,6 +116,8 @@ class PitchApp:
                     self.note_var.set("Silence / unreliable")
                     self.frequency_var.set("-- Hz")
                     self.confidence_var.set(f"{estimate.confidence:.0%} (low)")
+                event = self.tracker.update(estimate)
+                self.status_var.set(f"Microphone active - {event.kind}")
         self.root.after(50, self._drain_events)
 
     def close(self) -> None:

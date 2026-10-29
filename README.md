@@ -1,17 +1,27 @@
 # Saxophone-Controlled Minecraft
 
-## Stage 1: live pitch detector
+## Stage 1 and Stage 2: live pitch detector and note-state tracking
 
 Stage 1 provides a Tkinter window that captures mono microphone audio in a
-background thread and estimates the fundamental frequency using normalized
-autocorrelation. It displays the nearest equal-temperament note, octave,
-frequency, and a confidence indicator. Silence and signals below the
-confidence threshold are shown as `Silence / unreliable`.
+background thread and estimates the fundamental frequency using aubio's
+optimized `yin` detector. If aubio cannot be imported, the standard-library
+normalized-autocorrelation detector remains available as a fallback. It
+displays the nearest equal-temperament note, octave, frequency, and a
+confidence indicator. Silence and signals below the confidence threshold are
+shown as `Silence / unreliable`.
 
 The detector accepts a configurable expected frequency range. This is a
 frequency calibration range, not a claim that written saxophone note names
 have the same concert-pitch frequency. The sensitivity field controls the
-minimum normalized autocorrelation confidence accepted as a valid note.
+minimum confidence accepted as a valid note; `0.15` is a responsive default
+for saxophone attacks. Audio blocks are 1024 samples
+(about 23 ms at 44.1 kHz), improving responsiveness for short notes.
+
+Stage 2 adds `NoteStateTracker`, which turns frame estimates into `note_on`,
+`continue`, `change`, `uncertain`, and `note_off` events. A first valid frame
+starts a note quickly, a pitch change requires two consistent frames, and two
+uncertain frames end a note. These thresholds are deliberately isolated and
+configurable for later keyboard-control tuning.
 
 ## Installation
 
@@ -23,9 +33,11 @@ py -3.13 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-`aubio` and NumPy are intentionally not required for Stage 1. The detector
-uses the Python standard library, while `sounddevice` supplies microphone
-capture.
+`aubio` is used for lower CPU use and quicker response. Its `yin` method is
+used because the installed Windows build reports a zero confidence value for
+`yinfft` even on clean tones. It currently builds successfully on Python
+3.13.5 on Windows. The standard-library fallback does
+not require NumPy. `sounddevice` supplies microphone capture.
 
 ## Run
 
@@ -43,10 +55,12 @@ calculation run in a worker thread.
 python -m pytest -q
 ```
 
-The automated tests use synthetic sine waves and do not access a microphone.
+The automated tests use synthetic signals and do not access a microphone.
 Manual hardware verification is still required: play several individual
-saxophone notes, pause for silence, and confirm that valid notes appear only
-while the signal is reliable.
+saxophone notes, including short articulated notes, pause for silence, and
+confirm that valid notes appear only while the signal is reliable. The state
+tracker tests verify that sustained notes do not repeat `note_on`, brief gaps
+do not end a note, and pitch changes stabilize before being reported.
 
 ## Troubleshooting
 
@@ -54,5 +68,7 @@ while the signal is reliable.
   selected input device, then restart the application.
 - If `sounddevice` reports a PortAudio error, install the current device
   driver and check that the sample rate is supported.
-- The Stage 1 autocorrelation detector is intended for one note at a time.
-  Breath noise, strong harmonics, and room noise can reduce confidence.
+- The detector is intended for one note at a time. Breath noise, strong
+  harmonics, and room noise can reduce confidence.
+- If aubio cannot be installed on another machine, remove it from the
+  environment and the application will use the slower fallback detector.
