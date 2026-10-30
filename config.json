@@ -1,28 +1,108 @@
 {
   "release_delay_seconds": 0.08,
   "trigger_hold_seconds": 0.06,
-  "mouse_sensitivity": 10,
-  "mouse_sensitivity_raw": 35,
+  "mouse_sensitivity": 10.0,
+  "mouse_sensitivity_raw": 36.0,
   "mappings": {
-    "E3": {"key": "mouse_raw_down", "mode": "sustained", "enabled": true},
-    "F3": {"key": "mouse_raw_up", "mode": "sustained", "enabled": true},
-    "G3": {"key": "mouse_raw_right", "mode": "sustained", "enabled": true},
-    "A3": {"key": "mouse_raw_left", "mode": "sustained", "enabled": true},
-    "B3": {"key": "mouse_right", "mode": "trigger", "enabled": true},
-    "C4": {"key": "mouse_left", "mode": "sustained", "enabled": true},
-    "D4": {"key": "space", "mode": "sustained", "enabled": true},
-    "E4": {"key": "d", "mode": "sustained", "enabled": true},
-    "F4": {"key": "a", "mode": "sustained", "enabled": true},
-    "G4": {"key": "s", "mode": "sustained", "enabled": true},
-    "A4": {"key": "w", "mode": "sustained", "enabled": true},
-    "C5": {"key": "1", "mode": "trigger", "enabled": true},
-    "C#5": {"key": "2", "mode": "trigger", "enabled": true},
-    "D5": {"key": "e", "mode": "trigger", "enabled": true},
-    "D#5": {"key": "4", "mode": "trigger", "enabled": true},
-    "E5": {"key": "escape", "mode": "trigger", "enabled": true},
-    "F5": {"key": "6", "mode": "trigger", "enabled": true},
-    "F#5": {"key": "7", "mode": "trigger", "enabled": true},
-    "G5": {"key": "8", "mode": "trigger", "enabled": true},
-    "G#5": {"key": "9", "mode": "trigger", "enabled": true}
+    "E3": {
+      "key": "mouse_raw_down",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "F3": {
+      "key": "mouse_raw_up",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "G3": {
+      "key": "mouse_raw_right",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "A3": {
+      "key": "mouse_raw_left",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "B3": {
+      "key": "mouse_right",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "C4": {
+      "key": "mouse_left",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "D4": {
+      "key": "space",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "E4": {
+      "key": "d",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "F4": {
+      "key": "a",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "G4": {
+      "key": "s",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "A4": {
+      "key": "w",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "C5": {
+      "key": "1",
+      "mode": "sustained",
+      "enabled": true
+    },
+    "C#5": {
+      "key": "2",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "D5": {
+      "key": "e",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "D#5": {
+      "key": "4",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "E5": {
+      "key": "escape",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "F5": {
+      "key": "6",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "F#5": {
+      "key": "7",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "G5": {
+      "key": "8",
+      "mode": "trigger",
+      "enabled": true
+    },
+    "G#5": {
+      "key": "9",
+      "mode": "trigger",
+      "enabled": true
+    }
   }
 }

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from typing import Any
 
 from keyboard_controller import ControlMode, NoteMapping
 
@@ -62,6 +63,26 @@ def load_config(path: Path) -> AppConfig:
         else 5
     )
     return AppConfig(mappings, release_delay, trigger_hold, mouse_sensitivity, mouse_sensitivity_raw)
+
+
+def save_config(path: Path, config: AppConfig) -> None:
+    """Serialise *config* back to the JSON file at *path*, preserving ordering."""
+    # Reconstruct the note text key (e.g. ("C#", 4) -> "C#4") for every mapping.
+    raw_mappings: dict[str, Any] = {}
+    for (name, octave), mapping in config.mappings.items():
+        raw_mappings[f"{name}{octave}"] = {
+            "key": mapping.key,
+            "mode": mapping.mode.value,
+            "enabled": mapping.enabled,
+        }
+    raw: dict[str, Any] = {
+        "release_delay_seconds": config.release_delay_seconds,
+        "trigger_hold_seconds": config.trigger_hold_seconds,
+        "mouse_sensitivity": config.mouse_sensitivity,
+        "mouse_sensitivity_raw": config.mouse_sensitivity_raw,
+        "mappings": raw_mappings,
+    }
+    path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
 
 
 def _parse_note(value: str) -> tuple[str, int]:

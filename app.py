@@ -13,6 +13,7 @@ from focus_guard import minecraft_is_focused
 from keyboard_controller import KeyboardController, PynputKeySink
 from note_state import NoteStateTracker
 from pitch_detector import PitchEstimate, create_pitch_detector
+from settings_window import SettingsWindow
 
 
 class PitchApp:
@@ -32,9 +33,14 @@ class PitchApp:
         self.confidence_var = tk.StringVar(value="--")
         self.min_frequency_var = tk.StringVar(value="100")
         self.max_frequency_var = tk.StringVar(value="1200")
-        self.confidence_threshold_var = tk.StringVar(value="0.15")
+        self.confidence_threshold_var = tk.StringVar(value="0.90")
         self.control_var = tk.StringVar(value="Keyboard control inactive")
         self.held_keys_var = tk.StringVar(value="Held keys: none")
+        self._settings_window = SettingsWindow(
+            self.root,
+            config_path=Path(__file__).with_name("config.json"),
+            on_save=self._on_settings_saved,
+        )
         self._build()
         self.root.after(50, self._drain_events)
 
@@ -81,6 +87,24 @@ class PitchApp:
         ttk.Button(frame, text="EMERGENCY STOP", command=self.emergency_stop).grid(
             row=9, column=2, sticky="w", padx=(8, 0), pady=(8, 0)
         )
+        ttk.Button(frame, text="Settings…", command=self._open_settings).grid(
+            row=10, column=0, columnspan=3, sticky="e", pady=(12, 0)
+        )
+
+    def _open_settings(self) -> None:
+        self._settings_window.open()
+
+    def _on_settings_saved(self) -> None:
+        """Called by SettingsWindow after a successful save.
+
+        If the controller is currently active, restart it so the new mappings
+        and sensitivity values take effect immediately without the user having
+        to manually deactivate and re-activate.
+        """
+        was_active = self.controller is not None and self.controller.active
+        if was_active:
+            self.deactivate_controls()
+            self.activate_controls()
 
     def start(self) -> None:
         if self.worker:
