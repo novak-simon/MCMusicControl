@@ -1,110 +1,162 @@
-# Music-Controlled Minecraft
+# 🎷 MCMusicControl — Saxophone Minecraft Controller
 
-## Stage 1-4: pitch detection, note-state tracking, keyboard control, and mappings
+> [!WARNING]
+> **Active Development / Experimental**
+> This project is currently in active development. Features, defaults, and interfaces are continually being improved. Feedback and bug reports are welcome!
 
-Stage 1 provides a Tkinter window that captures mono microphone audio in a
-background thread and estimates the fundamental frequency using aubio's
-optimized `yin` detector. If aubio cannot be imported, the standard-library
-normalized-autocorrelation detector remains available as a fallback. It
-displays the nearest equal-temperament note, octave, frequency, and a
-confidence indicator. Silence and signals below the confidence threshold are
-shown as `Silence / unreliable`.
+MCMusicControl is a standalone Windows application that allows you to play and control **Minecraft (Java Edition)** using an acoustic musical instrument (designed and tuned for an **Alto Saxophone in E♭**) via your microphone.
 
-The detector accepts a configurable expected frequency range. Frequencies are
-measured at concert pitch, while note names are transposed to the written
-notes of an alto saxophone in E-flat. For example, a concert D#/Eb at about
-311 Hz is displayed as written C. The sensitivity field controls the
-minimum confidence accepted as a valid note; `0.15` is a responsive default
-for saxophone attacks. Audio blocks are 1024 samples
-(about 23 ms at 44.1 kHz), improving responsiveness for short notes.
+It detects notes in real time, filters out background noise, and translates musical pitches into keyboard inputs, mouse clicks, and camera POV look actions without needing any Minecraft mods.
 
-Stage 2 adds `NoteStateTracker`, which turns frame estimates into `note_on`,
-`continue`, `change`, `uncertain`, and `note_off` events. A first valid frame
-starts a note quickly, a pitch change requires two consistent frames, and two
-uncertain frames end a note. These thresholds are deliberately isolated and
-configurable for keyboard-control tuning.
+---
 
-Stage 3 adds `KeyboardController`. Keyboard and mouse control is never enabled at
-startup: click **Activate controls**, focus the Minecraft window, and then
-start playing. The current example mappings include sustained W/S/A/D
-movement and a trigger-mode Space jump. **Deactivate** and **EMERGENCY STOP**
-release every held key. Sustained mappings use a short configurable release
-delay, and multiple notes mapped to the same physical key are reference
-counted. Sustained mouse buttons use the same release-delay safety mechanism. Relative mouse
-movement mappings use `mouse_move_up`, `mouse_move_down`, `mouse_move_left`, or
-`mouse_move_right`; each stable audio frame moves the pointer by the configured
-`mouse_sensitivity` pixels. `mouse_up` and `mouse_down` are accepted aliases.
-The controller also releases keys when the foreground window is not
-Minecraft and is independently tested with a mock keyboard.
+## Features
 
-Special mappings use names such as `space`, `escape`, `enter`, `tab`, `shift`,
-`ctrl`, and `alt`; mouse buttons use `mouse_left`, `mouse_right`, or
-`mouse_middle`; ordinary single-character keys use their character. Mouse
-buttons are sent through `pynput.mouse`, not as keyboard arrow keys.
+- **Real-Time Pitch Detection**: Uses `aubio`'s low-latency `yin` pitch estimator with a built-in autocorrelation fallback.
+- **Saxophone Transposition**: Frequencies are automatically matched to the written notes of an Alto Saxophone in E♭ (e.g., concert D♯/E♭ displays as written C).
+- **In-Game Camera Look**: Uses Win32 low-level relative input injection (`mouse_raw_*`) so that moving your player's point of view works directly in Minecraft.
+- **Interactive In-App Settings**: Change note-to-key mappings and mouse sensitivity on the fly with live saving to `config.json`.
+- **Dual Control Modes**:
+  - `sustained`: Holds down a key or continues moving the camera as long as you sustain the note (e.g., walking forward with W, looking around).
+  - `trigger`: Presses a key once for a brief moment (e.g., jump with Space, open inventory with E, switch hotbar slots).
+- **Safety First**:
+  - **Focus Guard**: Automatically suppresses and releases all inputs if Minecraft is not the active window.
+  - **Emergency Stop**: One-click button and window safety to release all held keys immediately.
 
-Stage 4 stores the editable mappings in [`config.json`](./config.json). Set
-`mouse_sensitivity` to control the number of pixels moved per stable audio frame.
-The application validates this file when controls are activated and reports
-invalid JSON, notes, modes, keys, or timing values before sending input.
-Trigger mappings hold their key for `trigger_hold_seconds` (60 ms by default)
-and release it from the controller timer, giving Minecraft time to observe
-actions such as jump, inventory, hotbar selection, and Escape. Sustained
-movement and jump defaults are intentionally conservative.
+---
+
+## Requirements
+
+- **Operating System**: Windows 10 or 11
+- **Python**: Python 3.11 or newer (Python 3.13 recommended)
+- **Hardware**: Working microphone and your instrument
+
+---
 
 ## Installation
 
-Use Python 3.13 on Windows:
+1. **Clone or download** this repository to your local machine.
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
+2. **Open a terminal** (PowerShell) in the project directory:
 
-`aubio` is used for lower CPU use and quicker response. Its `yin` method is
-used because the installed Windows build reports a zero confidence value for
-`yinfft` even on clean tones. It currently builds successfully on Python
-3.13.5 on Windows. The standard-library fallback does
-not require NumPy. `sounddevice` supplies microphone capture and `pynput` supplies keyboard
-simulation. The application does not send keyboard input until controls are
-explicitly activated.
+   ```powershell
+   cd path\to\MCMusicControl
+   ```
 
-## Run
+3. **Create and activate a virtual environment**:
+
+   ```powershell
+   py -3.11 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+   *(Replace `-3.11` with your installed Python version, e.g., `-3.13`)*
+
+4. **Install required dependencies**:
+
+   ```powershell
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+---
+
+## How to Use
+
+### 1. Launch the Application
+
+Make sure your virtual environment is activated, then run:
 
 ```powershell
 python app.py
 ```
 
-Select an input microphone, adjust the expected pitch range if needed, and
-press **Start**. The UI remains on the main Tkinter thread; capture and pitch
-calculation run in a worker thread.
+### 2. Configure Your Microphone & Calibrate Audio
 
-Edit `config.json` while the application is stopped, then activate controls
-again to load the changes. A mapping has a note key such as `A4`, an action key,
-a mode (`sustained` or `trigger`), and an `enabled` flag. Use the `mouse_move_*`
-names for relative movement; the existing `mouse_left`, `mouse_right`, and
-`mouse_middle` names remain mouse buttons.
+1. **Select Microphone**: Choose your input device from the drop-down menu at the top.
+2. **Click "Start audio"**: The application begins analyzing microphone input.
+3. **Play some test notes**:
+   - Check the **Note**, **Frequency**, and **Confidence** indicators in the UI.
+   - Silence or background room noise will show as `Silence / unreliable`.
+4. **Tune Detection Parameters (optional)**:
+   - **Expected pitch range (Hz)**: Defaults to `100` Hz – `1200` Hz (covers the standard saxophone playing range).
+   - **Sensitivity (min confidence)**: Defaults to `0.90`. If your notes aren't registering reliably, you can lower this slightly (e.g., to `0.80`). If background noise causes accidental triggers, raise it.
 
-## Tests
+### 3. Customize Note Mappings & Sensitivity
+
+Click the **Settings…** button at the bottom of the window to open the configuration panel:
+
+- **Mouse Sensitivity**: Set the sensitivity for in-game camera look (`mouse_raw_*`).
+- **Key Mappings Table**:
+  - View each mapped note, its assigned key, its mode (`sustained` or `trigger`), and whether it's enabled.
+  - Edit keys and modes directly using the dropdowns or typing.
+  - Remove unwanted notes with the **✕** button.
+- **Add Mapping**: Pick a note name (e.g. `G#`), octave (`4`), choose an action key, and select the mode (`sustained` or `trigger`), then click **Add**.
+- **Save & Apply**: Writes your changes straight to `config.json` and immediately applies them to the live controller.
+
+#### Supported Keys & Actions
+
+- **Movement / Letters**: `w`, `a`, `s`, `d`, or any single letter/number
+- **Special Keys**: `space`, `escape`, `enter`, `tab`, `shift`, `ctrl`, `alt`, `backspace`, `delete`, arrow keys
+- **Mouse Clicks**: `mouse_left` (attack/mine), `mouse_right` (use/place), `mouse_middle`
+- **Camera Look (Raw)**: `mouse_raw_up`, `mouse_raw_down`, `mouse_raw_left`, `mouse_raw_right`
+
+### 4. Activate Controls & Play Minecraft
+
+1. Launch Minecraft and load into your world.
+2. In MCMusicControl, click **Activate controls**.
+3. Click into your Minecraft window to focus it.
+4. Play your instrument to control the game!
+
+> [!TIP]
+> **Safety Protection**:
+> - If you Alt-Tab away or open another window, MCMusicControl automatically releases all held keys.
+> - Click **Deactivate** or **EMERGENCY STOP** at any time to immediately halt all game inputs.
+
+---
+
+## Default Note Scheme
+
+The out-of-the-box layout provided in `config.json` uses the following mappings (written notes):
+
+| Written Note | Mode | Action | In-Game Function |
+|---|---|---|---|
+| **E3** | `sustained` | `mouse_raw_down` | Look Down |
+| **F3** | `sustained` | `mouse_raw_up` | Look Up |
+| **G3** | `sustained` | `mouse_raw_right` | Look Right |
+| **A3** | `sustained` | `mouse_raw_left` | Look Left |
+| **B3** | `trigger` | `mouse_right` | Use / Place Block |
+| **C4** | `sustained` | `mouse_left` | Attack / Mine |
+| **D4** | `sustained` | `space` | Jump |
+| **E4** | `sustained` | `d` | Strafe Right |
+| **F4** | `sustained` | `a` | Strafe Left |
+| **G4** | `sustained` | `s` | Walk Backward |
+| **A4** | `sustained` | `w` | Walk Forward |
+| **C5** | `trigger` | `1` | Hotbar Slot 1 |
+| **C#5** | `trigger` | `2` | Hotbar Slot 2 |
+| **D5** | `trigger` | `e` | Inventory |
+| **D#5** | `trigger` | `4` | Hotbar Slot 4 |
+| **E5** | `trigger` | `escape` | Pause / Menu |
+| **F5 – G#5** | `trigger` | `6` – `9` | Hotbar Slots 6–9 |
+
+You can customize all of these at any time via the **Settings…** dialog.
+
+---
+
+## Running Automated Tests
+
+To run the automated test suite:
 
 ```powershell
-python -m pytest -q
+py -m pytest tests/ -v
 ```
 
-The automated tests use synthetic signals and do not access a microphone.
-Manual hardware verification is still required: play several individual
-saxophone notes, including short articulated notes, pause for silence, and
-confirm that valid notes appear only while the signal is reliable. The state
-tracker tests verify that sustained notes do not repeat `note_on`, brief gaps
-do not end a note, and pitch changes stabilize before being reported.
+All 31 unit and integration tests run against synthetic audio signals without requiring physical microphone access.
+
+---
 
 ## Troubleshooting
 
-- If no microphone appears, verify Windows microphone permissions and the
-  selected input device, then restart the application.
-- If `sounddevice` reports a PortAudio error, install the current device
-  driver and check that the sample rate is supported.
-- The detector is intended for one note at a time. Breath noise, strong
-  harmonics, and room noise can reduce confidence.
-- If aubio cannot be installed on another machine, remove it from the
-  environment and the application will use the slower fallback detector.
+- **No microphone detected**: Ensure microphone permissions are granted in Windows Settings (*Privacy & Security > Microphone*) and reconnect your audio device before launching the app.
+- **Camera does not turn in Minecraft**: Make sure camera movements are mapped to `mouse_raw_*` keys (e.g. `mouse_raw_left`) rather than legacy pointer keys.
+- **Notes triggering accidentally**: Increase the **Sensitivity (min confidence)** threshold in the main window (e.g. `0.90` or higher). Ensure your microphone input volume is set to a moderate level to avoid clipping.
+- **Keys remain held down**: Click **EMERGENCY STOP** or switch windows to immediately clear all active key states.
