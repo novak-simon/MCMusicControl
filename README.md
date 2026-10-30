@@ -1,11 +1,5 @@
 # Music-Controlled Minecraft
 
-**####################################################################################**
-**Currently in development. The current version supports keyboard keys, mouse buttons, and configurable relative mouse movement. If you want to try it, use it with something like the OnlyKeys mod (https://modrinth.com/mod/onlykeys, developed by jaszlo and TNikoT, I hope they don't mind if I recommend their mod here), or a similar alternative.**
-**####################################################################################**
-
-
-
 ## Stage 1-4: pitch detection, note-state tracking, keyboard control, and mappings
 
 Stage 1 provides a Tkinter window that captures mono microphone audio in a
