@@ -113,6 +113,7 @@ class PitchApp:
                 release_delay_seconds=config.release_delay_seconds,
                 trigger_hold_seconds=config.trigger_hold_seconds,
                 mouse_sensitivity=config.mouse_sensitivity,
+                mouse_sensitivity_raw=config.mouse_sensitivity_raw,
                 focus_checker=minecraft_is_focused,
             )
             self.controller.activate()

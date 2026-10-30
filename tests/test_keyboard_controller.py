@@ -15,6 +15,9 @@ class MockKeyboard:
     def move(self, dx: int, dy: int) -> None:
         self.events.append(("move", f"{dx},{dy}"))
 
+    def move_raw(self, dx: int, dy: int) -> None:
+        self.events.append(("move_raw", f"{dx},{dy}"))
+
 
 def event(kind: str, note: str = "A", octave: int = 4) -> NoteEvent:
     return NoteEvent(kind, note, octave, 440.0, 0.9)
@@ -186,3 +189,59 @@ def test_mouse_movement_aliases_are_distinct_from_buttons() -> None:
     assert PynputKeySink._resolve_mouse_movement("mouse_up") == (0, -1)
     assert PynputKeySink._resolve_mouse_movement("mouse_move_left") == (-1, 0)
     assert PynputKeySink._resolve_mouse_movement("mouse_left") is None
+
+
+def test_raw_mouse_movement_uses_move_raw_and_raw_sensitivity() -> None:
+    """mouse_raw_* keys must call move_raw() with mouse_sensitivity_raw."""
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("mouse_raw_right", ControlMode.SUSTAINED)},
+        mouse_sensitivity=10,
+        mouse_sensitivity_raw=3,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    control.process(event("continue"))
+    # Should use move_raw, not move, with sensitivity 3
+    assert mock.events == [("move_raw", "3,0"), ("move_raw", "3,0")]
+
+
+def test_raw_mouse_trigger_does_not_repeat_on_continue() -> None:
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("mouse_raw_up", ControlMode.TRIGGER)},
+        mouse_sensitivity_raw=6,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    control.process(event("continue"))
+    assert mock.events == [("move_raw", "0,-6")]
+
+
+def test_raw_mouse_aliases_resolve_correctly() -> None:
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_raw_up") == (0, -1)
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_raw_down") == (0, 1)
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_raw_left") == (-1, 0)
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_raw_right") == (1, 0)
+    # Regular move keys must NOT match raw aliases
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_move_up") is None
+    assert PynputKeySink._resolve_raw_mouse_movement("mouse_left") is None
+
+
+def test_standard_move_keys_still_use_move_not_move_raw() -> None:
+    """Ensure old mouse_move_* keys still route through move(), not move_raw()."""
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("mouse_move_down", ControlMode.SUSTAINED)},
+        mouse_sensitivity=5,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    assert mock.events == [("move", "0,5")]
+    assert not any(e[0] == "move_raw" for e in mock.events)

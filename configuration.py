@@ -15,6 +15,7 @@ class AppConfig:
     release_delay_seconds: float = 0.08
     trigger_hold_seconds: float = 0.06
     mouse_sensitivity: float = 10
+    mouse_sensitivity_raw: float = 5
 
 
 def load_config(path: Path) -> AppConfig:
@@ -55,7 +56,12 @@ def load_config(path: Path) -> AppConfig:
         if "mouse_sensitivity" in raw
         else 10
     )
-    return AppConfig(mappings, release_delay, trigger_hold, mouse_sensitivity)
+    mouse_sensitivity_raw = (
+        _positive_number(raw, "mouse_sensitivity_raw")
+        if "mouse_sensitivity_raw" in raw
+        else 5
+    )
+    return AppConfig(mappings, release_delay, trigger_hold, mouse_sensitivity, mouse_sensitivity_raw)
 
 
 def _parse_note(value: str) -> tuple[str, int]:

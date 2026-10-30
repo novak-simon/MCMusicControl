@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes
+from ctypes import wintypes
 from dataclasses import dataclass
 from enum import Enum
 import time
@@ -28,6 +30,61 @@ class KeySink(Protocol):
     def release(self, key: str) -> None: ...
 
     def move(self, dx: int, dy: int) -> None: ...
+
+    def move_raw(self, dx: int, dy: int) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Win32 SendInput structures for raw relative mouse movement.
+# Used by move_raw() so that games using DirectInput / Raw Input (e.g.
+# Minecraft with "Raw Input" ON) receive the delta without it being filtered
+# by the Windows cursor position API.
+# ---------------------------------------------------------------------------
+
+_PUL = ctypes.POINTER(ctypes.c_ulong)
+
+
+class _MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", wintypes.LONG),
+        ("dy", wintypes.LONG),
+        ("mouseData", wintypes.DWORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", _PUL),
+    ]
+
+
+class _INPUT_UNION(ctypes.Union):
+    _fields_ = [("mi", _MOUSEINPUT)]
+
+
+class _INPUT(ctypes.Structure):
+    _fields_ = [("type", wintypes.DWORD), ("u", _INPUT_UNION)]
+
+
+_MOUSEEVENTF_MOVE = 0x0001  # Relative movement (no MOUSEEVENTF_ABSOLUTE)
+_INPUT_MOUSE = 0
+
+
+def _send_input_move(dx: int, dy: int) -> None:
+    """Inject a relative mouse-move event via Win32 SendInput.
+
+    Unlike pynput's move() (which calls SetCursorPos / mouse_event),
+    SendInput with MOUSEEVENTF_MOVE and no MOUSEEVENTF_ABSOLUTE bypasses
+    the desktop cursor and is picked up by Raw-Input readers such as
+    Minecraft Java Edition.
+    """
+    mi = _MOUSEINPUT(
+        dx=dx,
+        dy=dy,
+        mouseData=0,
+        dwFlags=_MOUSEEVENTF_MOVE,
+        time=0,
+        dwExtraInfo=None,
+    )
+    event = _INPUT(type=_INPUT_MOUSE, u=_INPUT_UNION(mi=mi))
+    ctypes.windll.user32.SendInput(1, ctypes.byref(event), ctypes.sizeof(event))
 
 
 class PynputKeySink:
@@ -57,7 +114,15 @@ class PynputKeySink:
             self._controller.release(self._resolve_key(key))
 
     def move(self, dx: int, dy: int) -> None:
+        """Standard OS-cursor move — works in desktop apps and Minecraft
+        inventory screens (when Raw Input is not capturing the pointer)."""
         self._mouse_controller.move(dx, dy)
+
+    def move_raw(self, dx: int, dy: int) -> None:
+        """Raw SendInput move — works in Minecraft in-game view even with
+        Raw Input enabled, because it injects into the hardware input stream
+        instead of repositioning the OS cursor."""
+        _send_input_move(dx, dy)
 
     @staticmethod
     def _resolve_mouse_button(key: str):
@@ -72,6 +137,7 @@ class PynputKeySink:
 
     @staticmethod
     def _resolve_mouse_movement(key: str) -> tuple[int, int] | None:
+        """Resolve standard (pynput) mouse-move key names."""
         aliases = {
             "mouse_move_up": (0, -1),
             "mouse_up": (0, -1),
@@ -79,6 +145,23 @@ class PynputKeySink:
             "mouse_down": (0, 1),
             "mouse_move_left": (-1, 0),
             "mouse_move_right": (1, 0),
+        }
+        return aliases.get(key.lower())
+
+    @staticmethod
+    def _resolve_raw_mouse_movement(key: str) -> tuple[int, int] | None:
+        """Resolve raw (SendInput) mouse-move key names.
+
+        These work in Minecraft even with Raw Input enabled and should be used
+        for in-game camera look. They carry a separate sensitivity setting
+        (``mouse_sensitivity_raw``) to allow tuning independently from the
+        regular pynput moves used in inventory screens.
+        """
+        aliases = {
+            "mouse_raw_up": (0, -1),
+            "mouse_raw_down": (0, 1),
+            "mouse_raw_left": (-1, 0),
+            "mouse_raw_right": (1, 0),
         }
         return aliases.get(key.lower())
 
@@ -125,6 +208,7 @@ class KeyboardController:
         release_delay_seconds: float = 0.08,
         trigger_hold_seconds: float = 0.06,
         mouse_sensitivity: float = 10,
+        mouse_sensitivity_raw: float = 5,
         clock: Callable[[], float] = time.monotonic,
         focus_checker: Callable[[], bool] | None = None,
     ) -> None:
@@ -134,11 +218,14 @@ class KeyboardController:
             raise ValueError("trigger_hold_seconds must be positive")
         if mouse_sensitivity <= 0:
             raise ValueError("mouse_sensitivity must be positive")
+        if mouse_sensitivity_raw <= 0:
+            raise ValueError("mouse_sensitivity_raw must be positive")
         self.sink = sink
         self.mappings = mappings or {}
         self.release_delay_seconds = release_delay_seconds
         self.trigger_hold_seconds = trigger_hold_seconds
         self.mouse_sensitivity = mouse_sensitivity
+        self.mouse_sensitivity_raw = mouse_sensitivity_raw
         self._clock = clock
         self._focus_checker = focus_checker
         self.active = False
@@ -212,6 +299,16 @@ class KeyboardController:
         if mapping is None or not mapping.enabled:
             return
         self._pending_release_at.pop(note, None)
+        # Check raw mouse movement first (Minecraft in-game look).
+        raw_movement = PynputKeySink._resolve_raw_mouse_movement(mapping.key)
+        if raw_movement is not None:
+            self._move_mouse_raw(mapping.key, raw_movement)
+            if mapping.mode is ControlMode.TRIGGER:
+                self.last_action = f"{mapping.key} (trigger)"
+            else:
+                self.last_action = f"{mapping.key} (moving raw)"
+            return
+        # Standard pynput mouse movement (inventory / desktop).
         movement = PynputKeySink._resolve_mouse_movement(mapping.key)
         if movement is not None:
             self._move_mouse(mapping.key, movement)
@@ -239,6 +336,10 @@ class KeyboardController:
         mapping = self.mappings.get(note)
         if mapping is None or not mapping.enabled or mapping.mode is ControlMode.TRIGGER:
             return
+        raw_movement = PynputKeySink._resolve_raw_mouse_movement(mapping.key)
+        if raw_movement is not None:
+            self._move_mouse_raw(mapping.key, raw_movement)
+            return
         movement = PynputKeySink._resolve_mouse_movement(mapping.key)
         if movement is not None:
             self._move_mouse(mapping.key, movement)
@@ -248,6 +349,13 @@ class KeyboardController:
         self.sink.move(
             round(dx * self.mouse_sensitivity),
             round(dy * self.mouse_sensitivity),
+        )
+
+    def _move_mouse_raw(self, key: str, direction: tuple[int, int]) -> None:
+        dx, dy = direction
+        self.sink.move_raw(
+            round(dx * self.mouse_sensitivity_raw),
+            round(dy * self.mouse_sensitivity_raw),
         )
 
     def _schedule_note_release(self, note: tuple[str, int]) -> None:
