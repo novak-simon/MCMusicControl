@@ -112,12 +112,13 @@ class PitchApp:
                 config.mappings,
                 release_delay_seconds=config.release_delay_seconds,
                 trigger_hold_seconds=config.trigger_hold_seconds,
+                mouse_sensitivity=config.mouse_sensitivity,
                 focus_checker=minecraft_is_focused,
             )
             self.controller.activate()
-            self.control_var.set("Keyboard control ACTIVE")
+            self.control_var.set("Keyboard and mouse control ACTIVE")
         except (RuntimeError, ValueError) as error:
-            messagebox.showerror("Keyboard control unavailable", str(error))
+            messagebox.showerror("Input control unavailable", str(error))
 
     def deactivate_controls(self) -> None:
         if self.controller:
@@ -174,7 +175,7 @@ class PitchApp:
                     except (OSError, RuntimeError, ValueError) as error:
                         self.controller.emergency_stop()
                         self.control_var.set("EMERGENCY STOP - keyboard error")
-                        self.status_var.set(f"Keyboard control error: {error}")
+                        self.status_var.set(f"Input control error: {error}")
                         continue
                 self.status_var.set(f"Microphone active - {event.kind}")
         self.root.after(50, self._drain_events)

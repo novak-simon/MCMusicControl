@@ -14,6 +14,7 @@ class AppConfig:
     mappings: dict[tuple[str, int], NoteMapping]
     release_delay_seconds: float = 0.08
     trigger_hold_seconds: float = 0.06
+    mouse_sensitivity: float = 10
 
 
 def load_config(path: Path) -> AppConfig:
@@ -49,7 +50,12 @@ def load_config(path: Path) -> AppConfig:
 
     release_delay = _positive_number(raw, "release_delay_seconds", allow_zero=True)
     trigger_hold = _positive_number(raw, "trigger_hold_seconds")
-    return AppConfig(mappings, release_delay, trigger_hold)
+    mouse_sensitivity = (
+        _positive_number(raw, "mouse_sensitivity")
+        if "mouse_sensitivity" in raw
+        else 10
+    )
+    return AppConfig(mappings, release_delay, trigger_hold, mouse_sensitivity)
 
 
 def _parse_note(value: str) -> tuple[str, int]:

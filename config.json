@@ -1,7 +1,12 @@
 {
   "release_delay_seconds": 0.08,
   "trigger_hold_seconds": 0.06,
+  "mouse_sensitivity": 10,
   "mappings": {
+    "E3": {"key": "mouse_move_down", "mode": "sustained", "enabled": true},
+    "F3": {"key": "mouse_move_up", "mode": "sustained", "enabled": true},
+    "G3": {"key": "mouse_move_right", "mode": "sustained", "enabled": true},
+    "A3": {"key": "mouse_move_left", "mode": "sustained", "enabled": true},
     "B3": {"key": "mouse_right", "mode": "trigger", "enabled": true},
     "C4": {"key": "mouse_left", "mode": "sustained", "enabled": true},
     "D4": {"key": "space", "mode": "sustained", "enabled": true},

@@ -4,7 +4,7 @@
 
 Build a standalone Windows application that lets me control Minecraft Java Edition by playing notes on a saxophone into a microphone.
 
-The application must detect musical pitches in real time and translate them into keyboard and, eventually, mouse inputs. It must work alongside an ordinary Minecraft installation without requiring a Minecraft mod.
+The application must detect musical pitches in real time and translate them into keyboard and mouse inputs. It must work alongside an ordinary Minecraft installation without requiring a Minecraft mod.
 
 I use Windows and VS Code. I want a reliable, configurable tool that I can actually play Minecraft with, not just a proof of concept.
 

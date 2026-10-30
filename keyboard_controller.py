@@ -1,4 +1,4 @@
-"""Safe translation of stable note events into keyboard actions."""
+"""Safe translation of stable note events into keyboard and mouse actions."""
 
 from __future__ import annotations
 
@@ -27,6 +27,8 @@ class KeySink(Protocol):
 
     def release(self, key: str) -> None: ...
 
+    def move(self, dx: int, dy: int) -> None: ...
+
 
 class PynputKeySink:
     """Production keyboard/mouse sink; imports are deferred until use."""
@@ -54,6 +56,9 @@ class PynputKeySink:
         else:
             self._controller.release(self._resolve_key(key))
 
+    def move(self, dx: int, dy: int) -> None:
+        self._mouse_controller.move(dx, dy)
+
     @staticmethod
     def _resolve_mouse_button(key: str):
         from pynput.mouse import Button
@@ -62,6 +67,18 @@ class PynputKeySink:
             "mouse_left": Button.left,
             "mouse_right": Button.right,
             "mouse_middle": Button.middle,
+        }
+        return aliases.get(key.lower())
+
+    @staticmethod
+    def _resolve_mouse_movement(key: str) -> tuple[int, int] | None:
+        aliases = {
+            "mouse_move_up": (0, -1),
+            "mouse_up": (0, -1),
+            "mouse_move_down": (0, 1),
+            "mouse_down": (0, 1),
+            "mouse_move_left": (-1, 0),
+            "mouse_move_right": (1, 0),
         }
         return aliases.get(key.lower())
 
@@ -107,6 +124,7 @@ class KeyboardController:
         mappings: dict[tuple[str, int], NoteMapping] | None = None,
         release_delay_seconds: float = 0.08,
         trigger_hold_seconds: float = 0.06,
+        mouse_sensitivity: float = 10,
         clock: Callable[[], float] = time.monotonic,
         focus_checker: Callable[[], bool] | None = None,
     ) -> None:
@@ -114,10 +132,13 @@ class KeyboardController:
             raise ValueError("release_delay_seconds must not be negative")
         if trigger_hold_seconds <= 0:
             raise ValueError("trigger_hold_seconds must be positive")
+        if mouse_sensitivity <= 0:
+            raise ValueError("mouse_sensitivity must be positive")
         self.sink = sink
         self.mappings = mappings or {}
         self.release_delay_seconds = release_delay_seconds
         self.trigger_hold_seconds = trigger_hold_seconds
+        self.mouse_sensitivity = mouse_sensitivity
         self._clock = clock
         self._focus_checker = focus_checker
         self.active = False
@@ -159,6 +180,8 @@ class KeyboardController:
                     if held_note != note:
                         self._release_note_immediately(held_note)
             self._activate_mapping(note)
+        elif event.kind == "continue" and note is not None:
+            self._continue_mapping(note)
         elif event.kind == "note_off" and note is not None:
             self._schedule_note_release(note)
 
@@ -189,6 +212,14 @@ class KeyboardController:
         if mapping is None or not mapping.enabled:
             return
         self._pending_release_at.pop(note, None)
+        movement = PynputKeySink._resolve_mouse_movement(mapping.key)
+        if movement is not None:
+            self._move_mouse(mapping.key, movement)
+            if mapping.mode is ControlMode.TRIGGER:
+                self.last_action = f"{mapping.key} (trigger)"
+            else:
+                self.last_action = f"{mapping.key} (moving)"
+            return
         if mapping.mode is ControlMode.TRIGGER:
             self.sink.press(mapping.key)
             self._pending_trigger_release_at[mapping.key] = (
@@ -203,6 +234,21 @@ class KeyboardController:
             if count == 0:
                 self.sink.press(mapping.key)
             self.last_action = f"{mapping.key} (held)"
+
+    def _continue_mapping(self, note: tuple[str, int]) -> None:
+        mapping = self.mappings.get(note)
+        if mapping is None or not mapping.enabled or mapping.mode is ControlMode.TRIGGER:
+            return
+        movement = PynputKeySink._resolve_mouse_movement(mapping.key)
+        if movement is not None:
+            self._move_mouse(mapping.key, movement)
+
+    def _move_mouse(self, key: str, direction: tuple[int, int]) -> None:
+        dx, dy = direction
+        self.sink.move(
+            round(dx * self.mouse_sensitivity),
+            round(dy * self.mouse_sensitivity),
+        )
 
     def _schedule_note_release(self, note: tuple[str, int]) -> None:
         if note in self._held_by_note:

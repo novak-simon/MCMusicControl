@@ -12,6 +12,9 @@ class MockKeyboard:
     def release(self, key: str) -> None:
         self.events.append(("release", key))
 
+    def move(self, dx: int, dy: int) -> None:
+        self.events.append(("move", f"{dx},{dy}"))
+
 
 def event(kind: str, note: str = "A", octave: int = 4) -> NoteEvent:
     return NoteEvent(kind, note, octave, 440.0, 0.9)
@@ -149,3 +152,37 @@ def test_pynput_resolves_space_and_escape_names() -> None:
     assert PynputKeySink._resolve_key("w") == "w"
     assert PynputKeySink._resolve_mouse_button("mouse_left") is Button.left
     assert PynputKeySink._resolve_mouse_button("mouse_right") is Button.right
+
+
+def test_sustained_mouse_movement_repeats_with_configured_sensitivity() -> None:
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("mouse_move_right", ControlMode.SUSTAINED)},
+        mouse_sensitivity=7,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    control.process(event("continue"))
+    assert mock.events == [("move", "7,0"), ("move", "7,0")]
+
+
+def test_trigger_mouse_movement_does_not_repeat_on_continue() -> None:
+    mock, clock = MockKeyboard(), [0.0]
+    control = KeyboardController(
+        mock,
+        {("A", 4): NoteMapping("mouse_move_up", ControlMode.TRIGGER)},
+        mouse_sensitivity=4,
+        clock=lambda: clock[0],
+    )
+    control.activate()
+    control.process(event("note_on"))
+    control.process(event("continue"))
+    assert mock.events == [("move", "0,-4")]
+
+
+def test_mouse_movement_aliases_are_distinct_from_buttons() -> None:
+    assert PynputKeySink._resolve_mouse_movement("mouse_up") == (0, -1)
+    assert PynputKeySink._resolve_mouse_movement("mouse_move_left") == (-1, 0)
+    assert PynputKeySink._resolve_mouse_movement("mouse_left") is None

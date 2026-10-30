@@ -1,7 +1,7 @@
 # Music-Controlled Minecraft
 
 **####################################################################################**
-**Curently in development. Current version supports all keyboard keys and mouse buttons, however replacements for mouse movement and inventory actions are yet to be implemented. If you want to try it, use it with something like the OnlyKeys mod (https://modrinth.com/mod/onlykeys, developed by jaszlo and TNikoT, I hope they don't mind if I recommend their mod here), or similar alternative.**
+**Currently in development. The current version supports keyboard keys, mouse buttons, and configurable relative mouse movement. If you want to try it, use it with something like the OnlyKeys mod (https://modrinth.com/mod/onlykeys, developed by jaszlo and TNikoT, I hope they don't mind if I recommend their mod here), or a similar alternative.**
 **####################################################################################**
 
 
@@ -16,9 +16,10 @@ displays the nearest equal-temperament note, octave, frequency, and a
 confidence indicator. Silence and signals below the confidence threshold are
 shown as `Silence / unreliable`.
 
-The detector accepts a configurable expected frequency range. This is a
-frequency calibration range, not a claim that written saxophone note names
-have the same concert-pitch frequency. The sensitivity field controls the
+The detector accepts a configurable expected frequency range. Frequencies are
+measured at concert pitch, while note names are transposed to the written
+notes of an alto saxophone in E-flat. For example, a concert D#/Eb at about
+311 Hz is displayed as written C. The sensitivity field controls the
 minimum confidence accepted as a valid note; `0.15` is a responsive default
 for saxophone attacks. Audio blocks are 1024 samples
 (about 23 ms at 44.1 kHz), improving responsiveness for short notes.
@@ -29,13 +30,16 @@ starts a note quickly, a pitch change requires two consistent frames, and two
 uncertain frames end a note. These thresholds are deliberately isolated and
 configurable for keyboard-control tuning.
 
-Stage 3 adds `KeyboardController`. Keyboard control is never enabled at
+Stage 3 adds `KeyboardController`. Keyboard and mouse control is never enabled at
 startup: click **Activate controls**, focus the Minecraft window, and then
 start playing. The current example mappings include sustained W/S/A/D
 movement and a trigger-mode Space jump. **Deactivate** and **EMERGENCY STOP**
 release every held key. Sustained mappings use a short configurable release
 delay, and multiple notes mapped to the same physical key are reference
-counted. Sustained mouse buttons use the same release-delay safety mechanism.
+counted. Sustained mouse buttons use the same release-delay safety mechanism. Relative mouse
+movement mappings use `mouse_move_up`, `mouse_move_down`, `mouse_move_left`, or
+`mouse_move_right`; each stable audio frame moves the pointer by the configured
+`mouse_sensitivity` pixels. `mouse_up` and `mouse_down` are accepted aliases.
 The controller also releases keys when the foreground window is not
 Minecraft and is independently tested with a mock keyboard.
 
@@ -44,14 +48,14 @@ Special mappings use names such as `space`, `escape`, `enter`, `tab`, `shift`,
 `mouse_middle`; ordinary single-character keys use their character. Mouse
 buttons are sent through `pynput.mouse`, not as keyboard arrow keys.
 
-Stage 4 stores the editable mappings in [`config.json`](./config.json).
+Stage 4 stores the editable mappings in [`config.json`](./config.json). Set
+`mouse_sensitivity` to control the number of pixels moved per stable audio frame.
 The application validates this file when controls are activated and reports
 invalid JSON, notes, modes, keys, or timing values before sending input.
 Trigger mappings hold their key for `trigger_hold_seconds` (60 ms by default)
 and release it from the controller timer, giving Minecraft time to observe
 actions such as jump, inventory, hotbar selection, and Escape. Sustained
-movement and jump defaults are intentionally conservative; the disabled C4
-entry reserves the future attack mapping without sending mouse input yet.
+movement and jump defaults are intentionally conservative.
 
 ## Installation
 
@@ -82,9 +86,10 @@ press **Start**. The UI remains on the main Tkinter thread; capture and pitch
 calculation run in a worker thread.
 
 Edit `config.json` while the application is stopped, then activate controls
-again to load the changes. A mapping has a note key such as `A4`, a keyboard
-key, a mode (`sustained` or `trigger`), and an `enabled` flag. Do not use
-mouse names yet; mouse control is a later stage.
+again to load the changes. A mapping has a note key such as `A4`, an action key,
+a mode (`sustained` or `trigger`), and an `enabled` flag. Use the `mouse_move_*`
+names for relative movement; the existing `mouse_left`, `mouse_right`, and
+`mouse_middle` names remain mouse buttons.
 
 ## Tests
 

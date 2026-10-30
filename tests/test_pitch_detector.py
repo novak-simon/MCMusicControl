@@ -8,15 +8,16 @@ def tone(frequency: float, sample_rate: int = 44100, count: int = 4096) -> list[
 
 
 def test_frequency_to_note() -> None:
-    assert frequency_to_note(440) == ("A", 4)
-    assert frequency_to_note(261.63) == ("C", 4)
+    assert frequency_to_note(311.13) == ("C", 4)
+    assert frequency_to_note(440) == ("F#", 4)
+    assert frequency_to_note(440, transposition_semitones=0) == ("A", 4)
     assert frequency_to_note(0) is None
 
 
 def test_detects_saxophone_range_tone() -> None:
     result = AutocorrelationPitchDetector().estimate(tone(440))
     assert result.is_valid
-    assert result.note_name == "A"
+    assert result.note_name == "F#"
     assert result.octave == 4
     assert abs(result.frequency_hz - 440) < 2
     assert result.confidence > 0.7
@@ -38,5 +39,5 @@ def test_aubio_detects_sustained_tone_with_confidence() -> None:
     results = [detector.estimate(tone(440, count=1024)) for _ in range(4)]
     result = results[-1]
     assert result.is_valid
-    assert result.note_name == "A"
+    assert result.note_name == "F#"
     assert result.confidence > 0.5

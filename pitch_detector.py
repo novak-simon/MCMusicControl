@@ -7,6 +7,9 @@ import math
 from typing import Sequence
 
 
+ALTO_SAX_TRANSPOSITION_SEMITONES = -3
+
+
 @dataclass(frozen=True)
 class PitchEstimate:
     frequency_hz: float | None
@@ -16,11 +19,14 @@ class PitchEstimate:
     is_valid: bool
 
 
-def frequency_to_note(frequency_hz: float) -> tuple[str, int] | None:
-    """Return the nearest equal-temperament note, or None for invalid input."""
+def frequency_to_note(
+    frequency_hz: float,
+    transposition_semitones: int = ALTO_SAX_TRANSPOSITION_SEMITONES,
+) -> tuple[str, int] | None:
+    """Return the nearest written alto-sax note for a concert frequency."""
     if frequency_hz <= 0 or not math.isfinite(frequency_hz):
         return None
-    midi = round(69 + 12 * math.log2(frequency_hz / 440.0))
+    midi = round(69 + 12 * math.log2(frequency_hz / 440.0)) + transposition_semitones
     octave = midi // 12 - 1
     return ("C C# D D# E F F# G G# A A# B".split()[midi % 12], octave)
 
